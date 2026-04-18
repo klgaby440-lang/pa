@@ -5,30 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Llink | Luga-Flow</title>
     <style>
-        /* CORRECTION DU DÉBORDEMENT */
         *, *::before, *::after { box-sizing: border-box; }
-        
         :root { --bg: #0d0d0d; --surf: #1a1a1a; --text: #F7E7CE; --accent: #d4b88c; --border: #333; }
         body.light-mode { --bg: #f9f9f9; --surf: #ffffff; --text: #121212; --border: #ddd; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* HEADER */
         .header { display: flex; justify-content: space-between; padding: 15px; background: var(--surf); border-bottom: 1px solid var(--border); align-items: center; }
         .btn-mode { order: 2; background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; }
         .menu-trigger { order: 1; }
 
-        /* SIDEBAR */
         .sidebar { position: fixed; top: 0; left: -300px; width: 280px; height: 100%; background: var(--surf); border-right: 1px solid var(--border); transition: 0.3s; z-index: 1000; padding: 20px 0; }
         .sidebar.active { left: 0; }
         .sidebar-btn { background: none; color: var(--text); border: none; padding: 15px 25px; text-align: left; width: 100%; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 15px; }
-        .sidebar-btn:hover { background: var(--bg); }
 
-        /* CHAT AREA */
         .chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; position: relative; scroll-behavior: smooth; }
         .home-logo { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); text-align: center; opacity: 0.6; }
         .ring { width: 70px; height: 70px; border: 2px dashed var(--accent); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
 
-        /* MESSAGES */
         .msg { display: flex; gap: 10px; max-width: 85%; }
         .msg.u { align-self: flex-end; flex-direction: row-reverse; }
         .msg.ai { align-self: flex-start; }
@@ -38,31 +31,29 @@
         .ai .bubble { background: var(--surf); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
         .tools { font-size: 11px; margin-top: 5px; display: flex; gap: 12px; color: var(--accent); cursor: pointer; }
 
-        /* BOTTOM CONTROLS */
         .footer { background: var(--surf); border-top: 1px solid var(--border); padding: 10px 15px; width: 100%; }
         .lang-bar { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; }
         .lang-bar select { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 4px 8px; border-radius: 5px; font-size: 12px; outline: none; max-width: 45%; }
 
-        /* CORRECTION DU DÉBORDEMENT DES BOUTONS */
         .input-row { display: flex; align-items: center; gap: 8px; width: 100%; }
         .input-box { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px 15px; border-radius: 25px; outline: none; font-size: 15px; }
         
         .icon-btn { background: none; border: none; color: var(--accent); font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; }
-        .icon-btn:active { background: var(--border); }
-
         .action-right { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
 
-        /* ADD MENU */
         .add-menu { display: none; position: absolute; bottom: 120px; left: 15px; background: var(--surf); border: 1px solid var(--border); border-radius: 10px; flex-direction: column; z-index: 500; box-shadow: 0 5px 15px rgba(0,0,0,0.5); overflow: hidden; }
         .add-menu label { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 14px; margin: 0; }
-        .add-menu label:last-child { border-bottom: none; }
-        .add-menu label:hover { background: var(--bg); }
         input[type="file"] { display: none; }
         
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 900; }
+        
+        /* Bannière d'erreur locale */
+        #localWarning { display: none; background: #8b0000; color: white; text-align: center; padding: 10px; font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
+
+<div id="localWarning">⚠️ Fichier ouvert en local (file://). Les API et le micro seront bloqués. Utilisez Acode, un serveur Python ou mettez la page en ligne.</div>
 
 <div class="header">
     <button class="icon-btn menu-trigger" onclick="toggleSidebar()">☰</button>
@@ -120,6 +111,11 @@
 </div>
 
 <script>
+    // Vérification immédiate du protocole local
+    if (window.location.protocol === 'file:') {
+        document.getElementById('localWarning').style.display = 'block';
+    }
+
     const PROXY = "https://corsproxy.io/?";
     const API_KEY = "hf_upEJEWLPHPyrkFjVur" + "CpJlsCvXlPNIaiZm";
     let mode = 'chatbot';
@@ -181,36 +177,30 @@
                 method: "POST", headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ inputs: prompt })
             });
-            const data = await res.json();
             
-            // Gestion stricte de la réponse de l'API
+            if (!res.ok) throw new Error("Le navigateur a bloqué la requête ou l'API est indisponible.");
+            
+            const data = await res.json();
             let replyText = "Erreur de format de réponse.";
-            if (Array.isArray(data) && data[0] && data[0].generated_text) {
-                replyText = data[0].generated_text;
-            } else if (data.choices && data.choices[0] && data.choices[0].message) {
-                replyText = data.choices[0].message.content;
-            } else if (data.error) {
-                replyText = "Erreur API : " + data.error;
-            }
+            if (Array.isArray(data) && data[0] && data[0].generated_text) replyText = data[0].generated_text;
+            else if (data.choices && data.choices[0] && data.choices[0].message) replyText = data.choices[0].message.content;
             
             loader.querySelector('.bubble').innerText = replyText;
-        } catch (e) { loader.querySelector('.bubble').innerText = "Erreur de connexion API."; }
+        } catch (e) { 
+            loader.querySelector('.bubble').innerText = "Erreur réseau. Si vous êtes sur un fichier local (file://), le navigateur bloque la connexion."; 
+        }
     }
 
     function saveHistory(txt) {
         let h = JSON.parse(localStorage.getItem('llink_history') || "[]");
         h.push(txt);
-        localStorage.setItem('llink_history', JSON.stringify(h.slice(-15))); // Garde les 15 derniers messages
+        localStorage.setItem('llink_history', JSON.stringify(h.slice(-15)));
     }
 
     function showHistory() {
         let h = JSON.parse(localStorage.getItem('llink_history') || "[]");
-        if(h.length === 0) {
-            alert("Aucun historique.");
-        } else {
-            alert("Vos derniers messages :\n\n- " + h.join("\n- "));
-        }
-        toggleSidebar(); // Ferme le menu après le clic
+        alert(h.length === 0 ? "Aucun historique." : "Derniers messages :\n\n- " + h.join("\n- "));
+        toggleSidebar();
     }
 
     async function handleMedia(input, type) {
@@ -225,18 +215,23 @@
             const res = await fetch(PROXY + endpoint, {
                 method: "POST", headers: { "Authorization": `Bearer ${API_KEY}` }, body: file
             });
+            if (!res.ok) throw new Error("Requête bloquée");
             const d = await res.json();
-            document.getElementById('userInput').value = d.text || d[0]?.generated_text || "Traitement terminé (aucun texte détecté).";
-        } catch { document.getElementById('userInput').value = "Erreur lors du traitement du média."; }
-        input.value = ''; // Réinitialise l'input file
+            document.getElementById('userInput').value = d.text || d[0]?.generated_text || "Terminé (aucun texte détecté).";
+        } catch { document.getElementById('userInput').value = "Erreur média (connexion bloquée)."; }
+        input.value = '';
     }
 
     async function toggleMic() {
         const btn = document.getElementById('micBtn');
         
-        // Vérification de la sécurité (HTTPS requis pour le micro)
+        if (window.location.protocol === 'file:') {
+            alert("Accès micro refusé. Ouvrez cette page via un serveur (ex: Acode ou Python) ou mettez-la en ligne (HTTPS).");
+            return;
+        }
+
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert("Votre navigateur bloque l'accès au micro. Assurez-vous que le site est en HTTPS.");
+            alert("Votre navigateur bloque l'accès au micro. Le HTTPS est obligatoire.");
             return;
         }
 
@@ -257,9 +252,9 @@
                     } catch (e) { document.getElementById('userInput').value = "Erreur de transcription."; }
                     btn.style.color = 'var(--accent)';
                 };
-                mediaRecorder.start(); btn.style.color = 'red'; // Indicateur visuel d'enregistrement
+                mediaRecorder.start(); btn.style.color = 'red';
             } catch (err) {
-                alert("Permission refusée ou micro introuvable.");
+                alert("Permission refusée par le système.");
             }
         } else { mediaRecorder.stop(); }
     }
