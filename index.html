@@ -1,263 +1,72 @@
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Llink | Luga-Flow</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; }
-        :root { --bg: #0d0d0d; --surf: #1a1a1a; --text: #F7E7CE; --accent: #d4b88c; --border: #333; }
-        body.light-mode { --bg: #f9f9f9; --surf: #ffffff; --text: #121212; --border: #ddd; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-        .header { display: flex; justify-content: space-between; padding: 15px; background: var(--surf); border-bottom: 1px solid var(--border); align-items: center; }
-        .btn-mode { order: 2; background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; }
-        .menu-trigger { order: 1; }
-
-        .sidebar { position: fixed; top: 0; left: -300px; width: 280px; height: 100%; background: var(--surf); border-right: 1px solid var(--border); transition: 0.3s; z-index: 1000; padding: 20px 0; }
-        .sidebar.active { left: 0; }
-        .sidebar-btn { background: none; color: var(--text); border: none; padding: 15px 25px; text-align: left; width: 100%; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 15px; }
-
-        .chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; position: relative; scroll-behavior: smooth; }
-        .home-logo { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); text-align: center; opacity: 0.6; }
-        .ring { width: 70px; height: 70px; border: 2px dashed var(--accent); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
-
-        .msg { display: flex; gap: 10px; max-width: 85%; }
-        .msg.u { align-self: flex-end; flex-direction: row-reverse; }
-        .msg.ai { align-self: flex-start; }
-        .ai-logo { width: 25px; height: 25px; border: 1px solid var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 5px; }
-        .bubble { padding: 12px 16px; border-radius: 18px; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
-        .u .bubble { background: var(--accent); color: #000; border-bottom-right-radius: 2px; }
-        .ai .bubble { background: var(--surf); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
-        .tools { font-size: 11px; margin-top: 5px; display: flex; gap: 12px; color: var(--accent); cursor: pointer; }
-
-        .footer { background: var(--surf); border-top: 1px solid var(--border); padding: 10px 15px; width: 100%; }
-        .lang-bar { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .lang-bar select { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 4px 8px; border-radius: 5px; font-size: 12px; outline: none; max-width: 45%; }
-
-        .input-row { display: flex; align-items: center; gap: 8px; width: 100%; }
-        .input-box { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px 15px; border-radius: 25px; outline: none; font-size: 15px; }
-        
-        .icon-btn { background: none; border: none; color: var(--accent); font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; }
-        .action-right { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
-
-        .add-menu { display: none; position: absolute; bottom: 120px; left: 15px; background: var(--surf); border: 1px solid var(--border); border-radius: 10px; flex-direction: column; z-index: 500; box-shadow: 0 5px 15px rgba(0,0,0,0.5); overflow: hidden; }
-        .add-menu label { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 14px; margin: 0; }
-        input[type="file"] { display: none; }
-        
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 900; }
-        
-        /* Bannière d'erreur locale */
-        #localWarning { display: none; background: #8b0000; color: white; text-align: center; padding: 10px; font-size: 12px; font-weight: bold; }
-    </style>
-</head>
-<body>
-
-<div id="localWarning">⚠️ Fichier ouvert en local (file://). Les API et le micro seront bloqués. Utilisez Acode, un serveur Python ou mettez la page en ligne.</div>
-
-<div class="header">
-    <button class="icon-btn menu-trigger" onclick="toggleSidebar()">☰</button>
-    <button class="btn-mode" onclick="toggleMode()" id="modeBtn">Chatbot</button>
-</div>
-
-<div class="sidebar" id="sidebar">
-    <button class="sidebar-btn" onclick="location.reload()">🔄 Nouvelle discussion</button>
-    <button class="sidebar-btn" onclick="showHistory()">📜 Historique</button>
-    <button class="sidebar-btn" onclick="alert('Module Abonnement à venir')">💎 Abonnement</button>
-    <button class="sidebar-btn" onclick="toggleTheme()">🌗 Mode Sombre/Clair</button>
-</div>
-
-<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-
-<div class="chat-container" id="chat">
-    <div class="home-logo" id="homeLogo">
-        <div class="ring">L</div>
-        <h1>Llink</h1>
-    </div>
-</div>
-
-<div class="footer">
-    <div class="lang-bar">
-        <select id="lIn">
-            <option value="auto">Source: Aucune</option>
-            <option>Français</option><option>Anglais</option>
-            <option>Lingala</option><option>Swahili(Bukavu)</option><option>Kishwahili Safi</option>
-        </select>
-        <span style="font-size: 12px; opacity: 0.5;">➔</span>
-        <select id="lOut">
-            <option value="auto">Réponse: Aucune</option>
-            <option>Français</option><option>Anglais</option>
-            <option>Lingala</option><option>Swahili(Bukavu)</option><option>Kishwahili Safi</option>
-        </select>
-    </div>
-
-    <div class="input-row">
-        <div style="position: relative;">
-            <button class="icon-btn" onclick="toggleAdd()">➕</button>
-            <div class="add-menu" id="addMenu">
-                <label>📷 Caméra (OCR) <input type="file" accept="image/*" capture="environment" onchange="handleMedia(this, 'ocr')"></label>
-                <label>🖼️ Galerie (OCR) <input type="file" accept="image/*" onchange="handleMedia(this, 'ocr')"></label>
-                <label>🎵 Audio Local <input type="file" accept="audio/*" onchange="handleMedia(this, 'stt')"></label>
-            </div>
-        </div>
-
-        <input type="text" id="userInput" class="input-box" placeholder="Message..." onkeypress="if(event.key === 'Enter') send()">
-
-        <div class="action-right">
-            <button class="icon-btn" id="micBtn" onclick="toggleMic()">🎤</button>
-            <button class="icon-btn" onclick="send()">➤</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    // Vérification immédiate du protocole local
-    if (window.location.protocol === 'file:') {
-        document.getElementById('localWarning').style.display = 'block';
-    }
-
-    const PROXY = "https://corsproxy.io/?";
-    const API_KEY = "hf_upEJEWLPHPyrkFjVur" + "CpJlsCvXlPNIaiZm";
-    let mode = 'chatbot';
-    let mediaRecorder;
-    let chunks = [];
-
-    function toggleSidebar() { 
-        document.getElementById('sidebar').classList.toggle('active'); 
-        document.getElementById('overlay').style.display = document.getElementById('sidebar').classList.contains('active') ? 'block' : 'none';
-    }
-    
-    function toggleAdd() { const m = document.getElementById('addMenu'); m.style.display = m.style.display === 'flex' ? 'none' : 'flex'; }
-    function toggleTheme() { document.body.classList.toggle('light-mode'); }
-    function toggleMode() { 
-        mode = mode === 'chatbot' ? 'traduction' : 'chatbot'; 
-        document.getElementById('modeBtn').innerText = mode.charAt(0).toUpperCase() + mode.slice(1);
-    }
-
-    function addMessage(text, side) {
-        if(document.getElementById('homeLogo')) document.getElementById('homeLogo').remove();
-        const chat = document.getElementById('chat');
-        const div = document.createElement('div');
-        div.className = `msg ${side}`;
-        
-        let content = `<div class="msg-content">`;
-        if(side === 'ai') content += `<div class="ai-logo">L</div>`;
-        content += `<div class="bubble">${text}</div></div>`;
-        
-        if(side === 'ai') {
-            content += `<div class="tools">
-                <span onclick="send('${text.replace(/'/g, "\\'")}', true)">🔄 Régénérer</span>
-                <span onclick="navigator.clipboard.writeText('${text.replace(/'/g, "\\'")}')">📋 Copier</span>
-            </div>`;
-        }
-        div.innerHTML = content;
-        chat.appendChild(div);
-        chat.scrollTop = chat.scrollHeight;
-        return div;
-    }
-
-    async function send(ovr = null, regen = false) {
-        const inp = document.getElementById('userInput');
-        const text = ovr || inp.value.trim();
-        if(!text) return;
-        
-        if(!regen) {
-            addMessage(text, 'u');
-            saveHistory(text);
-        }
-        inp.value = '';
-
-        const lOut = document.getElementById('lOut').value;
-        const loader = addMessage("...", "ai");
-
-        let prompt = mode === 'traduction' ? `Traduis en ${lOut}: ${text}` : `En tant que chatbot, réponds en ${lOut}: ${text}`;
-
-        try {
-            const res = await fetch(PROXY + "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-V3", {
-                method: "POST", headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ inputs: prompt })
-            });
-            
-            if (!res.ok) throw new Error("Le navigateur a bloqué la requête ou l'API est indisponible.");
-            
-            const data = await res.json();
-            let replyText = "Erreur de format de réponse.";
-            if (Array.isArray(data) && data[0] && data[0].generated_text) replyText = data[0].generated_text;
-            else if (data.choices && data.choices[0] && data.choices[0].message) replyText = data.choices[0].message.content;
-            
-            loader.querySelector('.bubble').innerText = replyText;
-        } catch (e) { 
-            loader.querySelector('.bubble').innerText = "Erreur réseau. Si vous êtes sur un fichier local (file://), le navigateur bloque la connexion."; 
-        }
-    }
-
-    function saveHistory(txt) {
-        let h = JSON.parse(localStorage.getItem('llink_history') || "[]");
-        h.push(txt);
-        localStorage.setItem('llink_history', JSON.stringify(h.slice(-15)));
-    }
-
-    function showHistory() {
-        let h = JSON.parse(localStorage.getItem('llink_history') || "[]");
-        alert(h.length === 0 ? "Aucun historique." : "Derniers messages :\n\n- " + h.join("\n- "));
-        toggleSidebar();
-    }
-
-    async function handleMedia(input, type) {
-        const file = input.files[0]; if(!file) return;
-        toggleAdd(); document.getElementById('userInput').value = "⏳ Analyse en cours...";
-        
-        const endpoint = type === 'ocr' 
-            ? "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-VL-72B-Instruct" 
-            : "https://api-inference.huggingface.co/models/openai/whisper-large-v3";
-
-        try {
-            const res = await fetch(PROXY + endpoint, {
-                method: "POST", headers: { "Authorization": `Bearer ${API_KEY}` }, body: file
-            });
-            if (!res.ok) throw new Error("Requête bloquée");
-            const d = await res.json();
-            document.getElementById('userInput').value = d.text || d[0]?.generated_text || "Terminé (aucun texte détecté).";
-        } catch { document.getElementById('userInput').value = "Erreur média (connexion bloquée)."; }
-        input.value = '';
-    }
-
-    async function toggleMic() {
-        const btn = document.getElementById('micBtn');
-        
-        if (window.location.protocol === 'file:') {
-            alert("Accès micro refusé. Ouvrez cette page via un serveur (ex: Acode ou Python) ou mettez-la en ligne (HTTPS).");
-            return;
-        }
-
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert("Votre navigateur bloque l'accès au micro. Le HTTPS est obligatoire.");
-            return;
-        }
-
-        if(!mediaRecorder || mediaRecorder.state === 'inactive') {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = async () => {
-                    document.getElementById('userInput').value = "⏳ Transcription...";
-                    const blob = new Blob(chunks, { type: 'audio/wav' }); chunks = [];
-                    try {
-                        const res = await fetch(PROXY + "https://api-inference.huggingface.co/models/openai/whisper-large-v3", {
-                            method: "POST", headers: { "Authorization": `Bearer ${API_KEY}` }, body: blob
-                        });
-                        const d = await res.json(); 
-                        document.getElementById('userInput').value = d.text || "Aucune voix détectée.";
-                    } catch (e) { document.getElementById('userInput').value = "Erreur de transcription."; }
-                    btn.style.color = 'var(--accent)';
-                };
-                mediaRecorder.start(); btn.style.color = 'red';
-            } catch (err) {
-                alert("Permission refusée par le système.");
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>CELDLI</title>
+        <style>
+            body {
+                background-color: antiquewhite;
             }
-        } else { mediaRecorder.stop(); }
-    }
-</script>
-</body>
+            header, footer {
+                padding: 2.5em;
+                text-align: center;
+            }
+            main {
+                background-color: black;
+                padding: 2em;
+                border-radius: 1.5em;
+            }
+            div {
+                background-color: black;
+                border-radius: 2em;
+                border-width: 0.2em;
+                border-color: white;
+                border-style: solid;
+                padding: 2em;
+            }
+            span, .klh24 {
+                color: white;
+            }
+            .div1 {
+                background-color: antiquewhite;
+                border-color: black;
+            }
+            .klh23, li {
+                color: white;
+            }
+            .spanlast {
+                color: black;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1 class="klh11">CELDLI</h1>
+            <h2 class="klh21">Centre d'éducation de Lugendo sur les drogues légales et illégales</h2>
+            <div class="div1">
+                <h2 class="klh22">Présentation</h2>
+                En République Démocratique du Congo(RDC) comme ailleurs les drogues légales et illégales sont dévenue un problème de santé publique.
+                Le constat reste amène peu de ressources pour des activités de prévention et de prise en charge des conséquences liées à la prise des drogues.
+            </div>
+            <img scr="c:\Users\KL GABY\Pictures\Screenshots\Capture d’écran (3).png">
+        </header>
+        <main>
+            <div>
+                <h2 class="klh23"><strong>CELDLI Centre d'éducation de Lugendo</strong> sur les drogues légales et illégales se donne comme objectif général:</h2>
+                    <span>Rendre l'homme autonome sans l'infulence des drogues et des boissons alcoolisées</span>
+            </div>
+            <div class="div3">
+                <h2 class="klh24">Objectifs spécifiques:</h2>
+                <ul>
+                    <li>La jeunesse est éduquée sur la neurologie des drogues y compris les boissons alcoolisées.</li>
+                    <li>Les familles constituent des lieux d'éducation sur les drogues illégales et les boissons alcoolisées.</li>
+                    <li>Les écoles mettent des activités trimestrielles sur l'éducation des drogues illégales et des boissons alcoolisées.</li>
+                    <li>Les autorités integrent des stratégies de réduction des risques liées aux drogues illégales et aux boissons alcoolisées.</li>
+                </ul>
+            </div>
+        </main>
+        <footer>
+            <span class="spanlast">La santé mental fait partie du bien etre.</span>
+        </footer>
+    </body>
 </html>
